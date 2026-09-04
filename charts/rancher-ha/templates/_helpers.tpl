@@ -39,3 +39,20 @@ real install it is the difference between a clear error now and three pods Pendi
 {{- end -}}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Rancher has to be in cattle-system, and this is not a convention.
+
+When it starts, Rancher registers the aggregated API `v1.ext.cattle.io` against a Service it
+creates itself, always at cattle-system/imperative-api-extension, selecting its own pods by
+label. A Service only selects pods in its own namespace, so a release in any other namespace
+leaves that Service with no endpoints, the APIService permanently unavailable, and every page
+of the UI replaced by the single line "API Aggregation not ready".
+
+Nothing in the failure points at the namespace, which is why it is worth failing here instead.
+*/}}
+{{- define "rancher-ha.checkNamespace" -}}
+{{- if ne .Release.Namespace "cattle-system" -}}
+{{- fail (printf "rancher-ha must be installed into the cattle-system namespace, not %s. Rancher registers its aggregated API against cattle-system/imperative-api-extension, which cannot select pods in another namespace, and the UI comes up as \"API Aggregation not ready\". Reinstall with --namespace cattle-system --create-namespace." .Release.Namespace) -}}
+{{- end -}}
+{{- end -}}

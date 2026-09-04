@@ -8,13 +8,14 @@ image: rancher/rancher:v2.15.1
 # needing one node per replica, which is the point.
 replicas: 3
 
-# Whether this Rancher adopts the cluster it runs on.
+# Whether this Rancher adopts the cluster it runs on as its `local` cluster.
 #
-# false here, against the upstream default, because the usual reason to install this chart is
-# onto a cluster some other Rancher already manages - and two Rancher servers reconciling one
-# cluster fight over cattle-system, where the agents, the webhook and Fleet each have exactly
-# one owner. Turn it on for a cluster that belongs to this Rancher alone.
-addLocal: false
+# Kept at true because it is not really optional: the flag has been deprecated since Rancher
+# 2.5 and the server refuses to start with it off. It is here to be read rather than changed -
+# it is the reason this chart wants a cluster of its own. Installed onto a cluster that another
+# Rancher already manages, the two reconcile one cattle-system, and fleet-agent in particular
+# has exactly one owner: the second Rancher takes it over and the first loses the cluster.
+addLocal: true
 
 # The check that refuses a cluster too small to spread three replicas over. Both halves can be
 # turned off together for a deliberate single-node trial; nothing else in the chart changes.

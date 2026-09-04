@@ -6,11 +6,20 @@ controller, reachable on the public address of any node.
 ```console
 helm repo add helm-dev https://codyrancher.github.io/helm-dev
 helm install rancher-ha helm-dev/rancher-ha \
-  --namespace rancher-ha --create-namespace \
+  --namespace cattle-system --create-namespace \
   --set adminPassword=<at least 12 characters>
 ```
 
 Then open `https://<any node address>/` and log in as `admin`.
+
+## It has to be cattle-system
+
+Not a convention - the chart refuses any other namespace. On startup Rancher registers the
+aggregated API `v1.ext.cattle.io` against a Service it creates itself, always at
+`cattle-system/imperative-api-extension`, selecting its own pods by label. A Service only
+selects pods in its own namespace, so a release anywhere else leaves that Service with no
+endpoints and every page of the UI replaced by the one line `API Aggregation not ready`.
+Nothing in that failure points at the namespace, so the chart fails at template time instead.
 
 ## It needs three nodes
 
@@ -42,13 +51,17 @@ replicas stay Pending, which is the honest outcome.
 | `service.type` | `ClusterIP` | Service type. |
 | `resources` | `{}` | Container resources. |
 
-## About `addLocal`
+## Give it a cluster of its own
 
-Upstream Rancher defaults this to `true` and adopts the cluster it runs on. This chart defaults
-it to `false`, because the usual reason to install it is onto a cluster that another Rancher
-already manages - and two Rancher servers reconciling one cluster fight over `cattle-system`,
-where the agents, the webhook and Fleet each have exactly one owner. On a cluster that belongs
-to this Rancher alone, turn it on.
+Rancher adopts the cluster it runs on as its `local` cluster, and there is no way round it:
+`addLocal` has been deprecated since Rancher 2.5 and the server refuses to start with it off.
+So the new Rancher installs its own webhook, Fleet and provisioning controllers into
+`cattle-system` and `cattle-fleet-system`.
+
+Install this onto a cluster that another Rancher already manages and the two of them reconcile
+the same namespaces. `fleet-agent` is the sharp edge: it has exactly one owner, the new Rancher
+takes it over, and the managing Rancher loses the cluster. Nothing is lost that cannot be
+rebuilt, but it is not a state to be surprised by.
 
 ## TLS
 

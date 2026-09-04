@@ -1,3 +1,4 @@
+{{- include "rancher-ha.checkNamespace" . -}}
 {{- include "rancher-ha.checkNodes" . -}}
 apiVersion: v1
 kind: ServiceAccount
