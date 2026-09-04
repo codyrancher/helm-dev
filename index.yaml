@@ -1,0 +1,167 @@
+apiVersion: v1
+entries:
+  rancher-ha:
+  - annotations:
+      catalog.cattle.io/display-name: Rancher HA
+      catalog.cattle.io/kube-version: '>=1.26.0-0'
+      catalog.cattle.io/namespace: rancher-ha
+      catalog.cattle.io/release-name: rancher-ha
+    apiVersion: v2
+    appVersion: v2.15.1
+    created: "2026-09-04T18:44:22.837761997Z"
+    dependencies:
+    - condition: virtualCluster
+      name: vcluster
+      repository: https://charts.loft.sh
+      version: 0.36.1
+    description: A Rancher server in threes - three replicas, one per node - in a
+      virtual cluster of its own, so several can share one real cluster.
+    digest: 4e490c91a84819e4440f671947abc6cce308648ba647b8ea1f8d0d0ab16d5b8f
+    home: https://github.com/codyrancher/helm-dev
+    icon: https://raw.githubusercontent.com/codyrancher/helm-dev/main/charts/rancher-ha/icon.svg
+    keywords:
+    - rancher
+    - ha
+    name: rancher-ha
+    sources:
+    - https://github.com/codyrancher/helm-dev
+    type: application
+    urls:
+    - https://codyrancher.github.io/helm-dev/rancher-ha-0.5.0.tgz
+    version: 0.5.0
+  - annotations:
+      catalog.cattle.io/display-name: Rancher HA
+      catalog.cattle.io/kube-version: '>=1.26.0-0'
+      catalog.cattle.io/namespace: rancher-ha
+      catalog.cattle.io/release-name: rancher-ha
+    apiVersion: v2
+    appVersion: v2.15.1
+    created: "2026-09-04T18:44:22.822369217Z"
+    dependencies:
+    - condition: virtualCluster
+      name: vcluster
+      repository: https://charts.loft.sh
+      version: 0.36.1
+    description: A Rancher server in threes - three replicas, one per node - in a
+      virtual cluster of its own, so several can share one real cluster.
+    digest: e8b0c9564e060c801e1dcc77d12b5be15988ac0d30932aa62d50836bc4a0d7cc
+    home: https://github.com/codyrancher/helm-dev
+    icon: https://raw.githubusercontent.com/codyrancher/helm-dev/main/charts/rancher-ha/icon.svg
+    keywords:
+    - rancher
+    - ha
+    name: rancher-ha
+    sources:
+    - https://github.com/codyrancher/helm-dev
+    type: application
+    urls:
+    - https://codyrancher.github.io/helm-dev/rancher-ha-0.4.0.tgz
+    version: 0.4.0
+  - annotations:
+      catalog.cattle.io/display-name: Rancher HA
+      catalog.cattle.io/kube-version: '>=1.26.0-0'
+      catalog.cattle.io/namespace: rancher-ha
+      catalog.cattle.io/release-name: rancher-ha
+    apiVersion: v2
+    appVersion: v2.15.1
+    created: "2026-09-04T18:44:22.815881713Z"
+    dependencies:
+    - condition: virtualCluster
+      name: vcluster
+      repository: https://charts.loft.sh
+      version: 0.36.1
+    description: A Rancher server in threes - three replicas, one per node - in a
+      virtual cluster of its own, so several can share one real cluster.
+    digest: ce8cf54422cac0b0bfc64dff13f628638533964e6c85f2e500645c2867a1d4b2
+    home: https://github.com/codyrancher/helm-dev
+    icon: https://raw.githubusercontent.com/codyrancher/helm-dev/main/charts/rancher-ha/icon.svg
+    keywords:
+    - rancher
+    - ha
+    name: rancher-ha
+    sources:
+    - https://github.com/codyrancher/helm-dev
+    type: application
+    urls:
+    - https://codyrancher.github.io/helm-dev/rancher-ha-0.3.0.tgz
+    version: 0.3.0
+  - annotations:
+      catalog.cattle.io/display-name: Rancher HA
+      catalog.cattle.io/kube-version: '>=1.26.0-0'
+      catalog.cattle.io/namespace: rancher-ha
+      catalog.cattle.io/release-name: rancher-ha
+    apiVersion: v2
+    appVersion: v2.15.1
+    created: "2026-09-04T18:44:22.812115442Z"
+    dependencies:
+    - condition: virtualCluster
+      name: vcluster
+      repository: https://charts.loft.sh
+      version: 0.36.1
+    description: A Rancher server in threes - three replicas, one per node - in a
+      virtual cluster of its own, so several can share one real cluster.
+    digest: 99b495f59fc17ea061a21e14753f56ed0bbf1388403c46477164438660aa3774
+    home: https://github.com/codyrancher/helm-dev
+    icon: https://raw.githubusercontent.com/codyrancher/helm-dev/main/charts/rancher-ha/icon.svg
+    keywords:
+    - rancher
+    - ha
+    name: rancher-ha
+    sources:
+    - https://github.com/codyrancher/helm-dev
+    type: application
+    urls:
+    - https://codyrancher.github.io/helm-dev/rancher-ha-0.2.1.tgz
+    version: 0.2.1
+  - annotations:
+      catalog.cattle.io/display-name: Rancher HA
+      catalog.cattle.io/kube-version: '>=1.26.0-0'
+      catalog.cattle.io/namespace: rancher-ha
+      catalog.cattle.io/release-name: rancher-ha
+    apiVersion: v2
+    appVersion: v2.15.1
+    created: "2026-09-04T18:44:22.807684001Z"
+    dependencies:
+    - condition: virtualCluster
+      name: vcluster
+      repository: https://charts.loft.sh
+      version: 0.36.1
+    description: A Rancher server in threes - three replicas, one per node - in a
+      virtual cluster of its own, so several can share one real cluster.
+    digest: 5c122e14cf716dcc6429d654ad0954ab968d06d7026f105c518bbb679a721550
+    home: https://github.com/codyrancher/helm-dev
+    icon: https://raw.githubusercontent.com/codyrancher/helm-dev/main/charts/rancher-ha/icon.svg
+    keywords:
+    - rancher
+    - ha
+    name: rancher-ha
+    sources:
+    - https://github.com/codyrancher/helm-dev
+    type: application
+    urls:
+    - https://codyrancher.github.io/helm-dev/rancher-ha-0.2.0.tgz
+    version: 0.2.0
+  - annotations:
+      catalog.cattle.io/display-name: Rancher HA
+      catalog.cattle.io/kube-version: '>=1.26.0-0'
+      catalog.cattle.io/namespace: cattle-system
+      catalog.cattle.io/release-name: rancher-ha
+    apiVersion: v2
+    appVersion: v2.15.1
+    created: "2026-09-04T18:44:22.803590733Z"
+    description: A Rancher server in threes - three replicas, one per node, reachable
+      on any node public IP.
+    digest: 11e77ed33df4fabe4d957616f71346d4125f006ca33bca656016239b3907bc4e
+    home: https://github.com/codyrancher/helm-dev
+    icon: https://raw.githubusercontent.com/codyrancher/helm-dev/main/charts/rancher-ha/icon.svg
+    keywords:
+    - rancher
+    - ha
+    name: rancher-ha
+    sources:
+    - https://github.com/codyrancher/helm-dev
+    type: application
+    urls:
+    - https://codyrancher.github.io/helm-dev/rancher-ha-0.1.0.tgz
+    version: 0.1.0
+generated: "2026-09-04T18:44:22.803098001Z"
