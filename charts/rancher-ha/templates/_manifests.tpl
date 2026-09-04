@@ -183,25 +183,19 @@ spec:
             timeoutSeconds: 5
             periodSeconds: 30
             failureThreshold: 5
-          # Readiness is not /healthz, and that is the point.
+          # Readiness is /healthz, and it has to be, however tempting the alternative looks.
           #
-          # A Rancher replica gates the UI on its own view of the aggregated API and answers
-          # `503 API Aggregation not ready` to every page until it is satisfied - while /healthz
-          # goes on returning 200. Probe /healthz, as the upstream chart does, and such a replica
-          # stays in the Service: with three of them, one request in three is a 503, which is
-          # exactly often enough to make the UI unusable and hard to catch.
+          # A replica answers `503 API Aggregation not ready` to every UI request until its own
+          # view of the aggregated API is satisfied, while /healthz returns 200 throughout - so
+          # probing a UI path instead would take the bad replica out of the Service. It also
+          # deadlocks: that APIService is backed by cattle-system/imperative-api-extension, a
+          # Service selecting these pods, and a Service only lists ready pods. Gate readiness on
+          # the UI and no pod is ever ready, so the Service is empty, so the APIService is never
+          # available, so the UI never comes up. Nothing starts, and the cause is invisible.
           #
-          # /dashboard/index.html is behind that same gate, so it fails when the UI would fail.
-          # The header is what makes it discriminate: without it Rancher answers any http
-          # request with a redirect to https - a 3xx, which a probe counts as success - before
-          # it ever reaches the gate.
+          # The 503s are handled where they show up instead - see the ingress annotations.
           readinessProbe:
-            httpGet:
-              path: /dashboard/index.html
-              port: 80
-              httpHeaders:
-                - name: X-Forwarded-Proto
-                  value: https
+            httpGet: { path: /healthz, port: 80 }
             timeoutSeconds: 5
             periodSeconds: 15
             failureThreshold: 3
@@ -233,6 +227,14 @@ metadata:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "1800"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "1800"
     nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    # A replica that is up but not yet serving the UI answers 503 rather than failing to
+    # connect, and its readiness cannot be made to reflect that without deadlocking the
+    # aggregated API it is waiting for (see the readiness probe). So the retry lives here: on a
+    # 503 nginx tries the next replica instead of handing the visitor the error. Without it,
+    # with three replicas, one request in three fails for as long as one of them is behind.
+    nginx.ingress.kubernetes.io/proxy-next-upstream: "error timeout http_502 http_503"
+    nginx.ingress.kubernetes.io/proxy-next-upstream-tries: "3"
+    nginx.ingress.kubernetes.io/proxy-next-upstream-timeout: "30"
 {{- with .Values.ingress.annotations }}
 {{ toYaml . | indent 4 }}
 {{- end }}

@@ -2,7 +2,7 @@ apiVersion: v2
 name: rancher-ha
 description: A Rancher server in threes - three replicas, one per node - in a virtual cluster of its own, so several can share one real cluster.
 type: application
-version: 0.2.0
+version: 0.2.1
 appVersion: v2.15.1
 keywords:
   - rancher
