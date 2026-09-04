@@ -115,21 +115,36 @@ spec:
               echo "waiting for the virtual cluster's kubeconfig"
               i=0
               until kubectl -n {{ $ns }} get secret {{ include "rancher-ha.vclusterSecret" . }} >/dev/null 2>&1; do
-                i=$((i+1)); [ "$i" -gt 120 ] && { echo "the virtual cluster never published a kubeconfig"; exit 1; }
+                i=$((i+1))
+                if [ "$i" -gt 120 ]; then
+                  echo "the virtual cluster never published a kubeconfig:"
+                  kubectl -n {{ $ns }} get secret {{ include "rancher-ha.vclusterSecret" . }} || true
+                  exit 1
+                fi
                 sleep 5
               done
 
               # The kubeconfig it publishes is written for a port-forward, so the server in it
-              # is localhost. From in here the virtual cluster is an ordinary Service.
+              # is localhost. From in here the virtual cluster is an ordinary Service - but it
+              # has to be addressed as <service>.<namespace> and not <service>.<namespace>.svc,
+              # because that is what is in the certificate vCluster generates. The longer form
+              # resolves perfectly well and then fails to verify.
               kubectl -n {{ $ns }} get secret {{ include "rancher-ha.vclusterSecret" . }} \
                 -o jsonpath='{.data.config}' | base64 -d \
-                | sed 's|https://localhost:8443|https://{{ include "rancher-ha.vclusterService" . }}.{{ $ns }}.svc:443|' > /tmp/vc.kubeconfig
+                | sed 's|https://localhost:8443|https://{{ include "rancher-ha.vclusterService" . }}.{{ $ns }}:443|' > /tmp/vc.kubeconfig
               export KUBECONFIG=/tmp/vc.kubeconfig
 
               echo "waiting for the virtual cluster to answer"
               i=0
               until kubectl get namespace >/dev/null 2>&1; do
-                i=$((i+1)); [ "$i" -gt 120 ] && { echo "the virtual cluster never became reachable"; exit 1; }
+                i=$((i+1))
+                if [ "$i" -gt 120 ]; then
+                  # Say what actually went wrong. A wait loop that swallows its error leaves
+                  # nothing behind but the fact that it waited.
+                  echo "the virtual cluster never became reachable:"
+                  kubectl get namespace || true
+                  exit 1
+                fi
                 sleep 5
               done
 

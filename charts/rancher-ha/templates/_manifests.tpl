@@ -183,11 +183,28 @@ spec:
             timeoutSeconds: 5
             periodSeconds: 30
             failureThreshold: 5
+          # Readiness is not /healthz, and that is the point.
+          #
+          # A Rancher replica gates the UI on its own view of the aggregated API and answers
+          # `503 API Aggregation not ready` to every page until it is satisfied - while /healthz
+          # goes on returning 200. Probe /healthz, as the upstream chart does, and such a replica
+          # stays in the Service: with three of them, one request in three is a 503, which is
+          # exactly often enough to make the UI unusable and hard to catch.
+          #
+          # /dashboard/index.html is behind that same gate, so it fails when the UI would fail.
+          # The header is what makes it discriminate: without it Rancher answers any http
+          # request with a redirect to https - a 3xx, which a probe counts as success - before
+          # it ever reaches the gate.
           readinessProbe:
-            httpGet: { path: /healthz, port: 80 }
+            httpGet:
+              path: /dashboard/index.html
+              port: 80
+              httpHeaders:
+                - name: X-Forwarded-Proto
+                  value: https
             timeoutSeconds: 5
-            periodSeconds: 30
-            failureThreshold: 5
+            periodSeconds: 15
+            failureThreshold: 3
           {{- with .Values.resources }}
           resources: {{- toYaml . | nindent 12 }}
           {{- end }}
