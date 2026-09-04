@@ -22,9 +22,14 @@ metadata:
 data:
   url: {{ printf "https://%s" $host | quote }}
   username: admin
-  # Not the password. It is a value of this release, and it is in the bootstrap Secret beside
-  # Rancher itself - inside the virtual cluster when there is one.
-  passwordFrom: {{ printf "secret/%s-bootstrap in namespace %s" (include "rancher-ha.fullname" .) (include "rancher-ha.targetNamespace" .) | quote }}
+  # Not the password itself - see the Secret named below, which is in this namespace and so is
+  # one click away in the UI. Putting it here instead would make it readable by anything that
+  # can read ConfigMaps, which is a wider circle than anything that can read Secrets.
+  passwordSecret: {{ printf "%s-admin" (include "rancher-ha.fullname" .) | quote }}
+  passwordCommand: {{ printf "kubectl -n %s get secret %s-admin -o jsonpath='{.data.password}' | base64 -d" .Release.Namespace (include "rancher-ha.fullname" .) | quote }}
+  {{- if not .Values.virtualCluster }}
+  passwordSecretNote: "In direct mode Rancher's own bootstrap Secret is in this namespace too."
+  {{- end }}
   {{- if .Values.virtualCluster }}
   virtualCluster: {{ include "rancher-ha.vclusterService" . | quote }}
   note: "Rancher runs inside the virtual cluster named above; the Deployment and Ingress are not in this release."

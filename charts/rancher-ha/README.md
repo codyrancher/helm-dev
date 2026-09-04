@@ -74,6 +74,14 @@ NS:.metadata.namespace,URL:.data.url,USER:.data.username
 One line per Rancher on the cluster. The same information is on the Ingress inside the virtual
 cluster, and on its synced copy in the release namespace, if you would rather look there.
 
+The password sits beside it in a Secret in the same namespace - Rancher's own copy is inside
+the virtual cluster, which you would need a second kubeconfig to reach:
+
+```console
+kubectl -n <release namespace> get secret <release>-rancher-ha-admin \
+  -o jsonpath='{.data.password}' | base64 -d
+```
+
 **A caveat about readiness.** A deploying system watches the resources in the release, and they
 are all vCluster's. It will report the release healthy as soon as the virtual cluster is up,
 which is a few minutes before Rancher answers. Do not read "Active" as "Rancher is ready" -
