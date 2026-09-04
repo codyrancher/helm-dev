@@ -50,6 +50,16 @@ there can be only one.
 - **A default StorageClass**, for the virtual cluster's control-plane volume. RKE2 and K3s ship
   none; `rancher/local-path-provisioner` is the usual answer. Checked at template time.
 
+## It does not ask you to bootstrap it
+
+A new Rancher normally opens on a bootstrap-password page and then a wizard asking for the
+server URL and for the EULA to be accepted. All three are settings, and this chart knows every
+answer already - the URL is the ingress host it just created - so it writes them and the site
+opens on an ordinary login page.
+
+That includes recording acceptance of the Rancher EULA on your behalf. `skipFirstRun=false`
+leaves all three unset and you are asked in the browser instead.
+
 ## Values
 
 | Key | Default | What it is |
@@ -59,6 +69,7 @@ there can be only one.
 | `ingress.host` | `""` | The hostname this release answers on. |
 | `ingress.baseDomain` | `""` | Or set this, and the host becomes `<release>.<baseDomain>`. |
 | `virtualCluster` | `true` | Give this Rancher a virtual cluster of its own. |
+| `skipFirstRun` | `true` | Answer the first-run screens, including accepting the EULA. |
 | `replicas` | `3` | One per node. |
 | `addLocal` | `true` | Not really optional - Rancher refuses to start with it off. |
 | `nodeCheck.enabled` | `true` | The three-node check. |

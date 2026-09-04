@@ -15,6 +15,15 @@ replicas: 3
 # the virtual one, which is exactly what makes several Ranchers able to share real machines.
 addLocal: true
 
+# Answer Rancher's first-run screens instead of asking a person.
+#
+# Out of the box a new Rancher opens on a bootstrap-password page and then a wizard asking for
+# the server URL and for the Rancher EULA to be accepted. This chart knows all three answers -
+# the URL is the ingress host it just created - so with this on it writes them and the site
+# opens on an ordinary login page. Note what that includes: it records acceptance of the
+# Rancher EULA on your behalf. Set it to false to be asked in the browser instead.
+skipFirstRun: true
+
 # Give each Rancher a virtual cluster of its own.
 #
 # This is what lets more than one live on a single real cluster, and it is on by default because

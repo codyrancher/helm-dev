@@ -1,5 +1,6 @@
-{{- if .Values.virtualCluster }}
+{{- if or .Values.virtualCluster .Values.skipFirstRun }}
 {{- $ns := .Release.Namespace -}}
+{{- $host := include "rancher-ha.host" . -}}
 {{- $name := include "rancher-ha.fullname" . -}}
 # Getting Rancher inside the virtual cluster.
 #
@@ -10,6 +11,7 @@
 # The obvious alternative, vCluster's own experimental.deploy.vcluster.helm, cannot be used
 # here: it is a subchart value, and Helm does not template subchart values, so the password,
 # image and hostname somebody just typed could never reach it.
+{{- if .Values.virtualCluster }}
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -76,6 +78,7 @@ roleRef:
   name: {{ $name }}-bootstrap
   apiGroup: rbac.authorization.k8s.io
 ---
+{{- end }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -94,24 +97,29 @@ spec:
       labels:
         app: {{ $name }}-bootstrap
     spec:
-      serviceAccountName: {{ $name }}-bootstrap
+      serviceAccountName: {{ if .Values.virtualCluster }}{{ $name }}-bootstrap{{ else }}{{ $name }}{{ end }}
       restartPolicy: Never
+{{- if .Values.virtualCluster }}
       volumes:
         - name: manifests
           configMap:
             name: {{ $name }}-manifests
+{{- end }}
       containers:
         - name: bootstrap
           # The Rancher image again: it carries kubectl, and it is the image being pulled onto
           # these nodes anyway, so the bootstrap costs no second pull.
           image: {{ .Values.image | quote }}
+{{- if .Values.virtualCluster }}
           volumeMounts:
             - name: manifests
               mountPath: /manifests
+{{- end }}
           command: [/bin/sh, -c]
           args:
             - |
               set -e
+{{- if .Values.virtualCluster }}
               echo "waiting for the virtual cluster's kubeconfig"
               i=0
               until kubectl -n {{ $ns }} get secret {{ include "rancher-ha.vclusterSecret" . }} >/dev/null 2>&1; do
@@ -151,4 +159,34 @@ spec:
               kubectl create namespace {{ include "rancher-ha.targetNamespace" . }} --dry-run=client -o yaml | kubectl apply -f -
               kubectl apply -f /manifests/rancher.yaml
               echo "Rancher applied inside the virtual cluster; it takes a few minutes to answer"
+{{- end }}
+{{- if .Values.skipFirstRun }}
+
+              # Answer Rancher's first-run screens, which it would otherwise ask a person.
+              #
+              # A new Rancher greets its first visitor with the bootstrap-password page and then
+              # a wizard asking for the server URL and for the EULA to be accepted. All three
+              # are settings, and this chart already knows every answer - the URL is its own
+              # ingress host - so there is nothing to ask. Rancher creates the settings itself
+              # at startup with empty values, so this waits for them rather than creating them.
+              echo "waiting for Rancher to create its settings"
+              i=0
+              until kubectl get settings.management.cattle.io server-url >/dev/null 2>&1; do
+                i=$((i+1))
+                if [ "$i" -gt 180 ]; then
+                  echo "Rancher never created its settings:"
+                  kubectl get settings.management.cattle.io server-url || true
+                  exit 1
+                fi
+                sleep 5
+              done
+
+              kubectl patch settings.management.cattle.io server-url --type=merge \
+                -p '{"value":"https://{{ $host }}"}'
+              kubectl patch settings.management.cattle.io first-login --type=merge \
+                -p '{"value":"false"}'
+              kubectl patch settings.management.cattle.io eula-agreed --type=merge \
+                -p "{\"value\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
+              echo "first-run screens answered; the site opens on a plain login page"
+{{- end }}
 {{- end }}
