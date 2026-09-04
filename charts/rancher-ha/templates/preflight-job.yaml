@@ -1,0 +1,96 @@
+{{- if .Values.nodeCheck.enabled }}
+# The node count, said out loud from inside the cluster.
+#
+# The template-time check in _helpers.tpl catches this earlier and better, but it only fires
+# when Helm can reach the API - a rendering, a `helm template`, an argocd diff all skip it. This
+# runs where there is no doubt, and fails the install with the same sentence.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "rancher-ha.fullname" . }}-preflight
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "rancher-ha.labels" . | indent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        # Deliberately not the fullname: that is the Service's selector, and a Job pod wearing
+        # it becomes an endpoint the ingress can route a real request to.
+        app: {{ include "rancher-ha.fullname" . }}-preflight
+    spec:
+      serviceAccountName: {{ include "rancher-ha.fullname" . }}-preflight
+      restartPolicy: Never
+      containers:
+        - name: check
+          # The Rancher image, not a kubectl one: it already carries kubectl, and it is the
+          # image this release is pulling anyway - so the check costs no second pull.
+          image: {{ .Values.image | quote }}
+          command: [/bin/sh, -c]
+          args:
+            - |
+              set -e
+              nodes=$(kubectl get nodes --no-headers 2>/dev/null | wc -l)
+              echo "this cluster has $nodes node(s)"
+              if [ "$nodes" -lt {{ .Values.nodeCheck.minNodes }} ]; then
+                echo ""
+                echo "rancher-ha needs a cluster with at least {{ .Values.nodeCheck.minNodes }} nodes."
+                echo "It runs {{ .Values.replicas }} Rancher replicas, one per node, so that losing a node"
+                echo "leaves a majority. On $nodes node(s) the replicas cannot be placed."
+                exit 1
+              fi
+              echo "ok: enough nodes for {{ .Values.replicas }} replicas, one per node"
+---
+# The hook runs before the release's own ServiceAccount exists, so it brings its own - with
+# just enough to count nodes, which is a great deal less than the server itself gets.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "rancher-ha.fullname" . }}-preflight
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "rancher-ha.labels" . | indent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "rancher-ha.fullname" . }}-preflight
+  labels:
+{{ include "rancher-ha.labels" . | indent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+rules:
+  - apiGroups: [""]
+    resources: [nodes]
+    verbs: [list]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "rancher-ha.fullname" . }}-preflight
+  labels:
+{{ include "rancher-ha.labels" . | indent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "rancher-ha.fullname" . }}-preflight
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: {{ include "rancher-ha.fullname" . }}-preflight
+  apiGroup: rbac.authorization.k8s.io
+{{- end }}

@@ -1,0 +1,17 @@
+# What Rancher's install form asks. Two questions, both with the value already filled in, so
+# Next-Next-Install produces a working Rancher and answering nothing is a valid answer.
+questions:
+  - variable: adminPassword
+    label: Admin password
+    description: The password for the admin user on the new Rancher. At least 12 characters. It is read once, while the new server bootstraps, and can be changed in Rancher afterwards.
+    type: password
+    required: true
+    default: rancher-ha-changeme
+    group: Rancher
+  - variable: image
+    label: Rancher image
+    description: The Rancher server image to run. Any tag of rancher/rancher, or your own registry mirror of it.
+    type: string
+    required: true
+    default: rancher/rancher:v2.15.1
+    group: Rancher

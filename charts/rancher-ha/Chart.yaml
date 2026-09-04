@@ -1,0 +1,18 @@
+apiVersion: v2
+name: rancher-ha
+description: A Rancher server in threes - three replicas, one per node, reachable on any node public IP.
+type: application
+version: 0.1.0
+appVersion: v2.15.1
+keywords:
+  - rancher
+  - ha
+home: https://github.com/codyrancher/helm-dev
+sources:
+  - https://github.com/codyrancher/helm-dev
+icon: https://raw.githubusercontent.com/codyrancher/helm-dev/main/charts/rancher-ha/icon.svg
+annotations:
+  catalog.cattle.io/display-name: Rancher HA
+  catalog.cattle.io/release-name: rancher-ha
+  catalog.cattle.io/namespace: rancher-ha
+  catalog.cattle.io/kube-version: ">=1.26.0-0"

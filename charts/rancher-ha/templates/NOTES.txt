@@ -1,0 +1,29 @@
+{{ .Chart.Name }} {{ .Chart.Version }} - Rancher {{ .Chart.AppVersion }}, {{ .Values.replicas }} replicas, one per node.
+
+Reaching it:
+
+{{- if .Values.ingress.enabled }}
+{{- if .Values.ingress.host }}
+  https://{{ .Values.ingress.host }}
+{{- else }}
+  The ingress rule has no host, so any node address answers. Pick one:
+
+    kubectl get nodes -o wide
+
+  and open https://<that address>/ . The certificate is the ingress controller's own, so the
+  browser warns once.
+{{- end }}
+{{- else }}
+  No ingress was created (ingress.enabled=false). Reach the service directly:
+
+    kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "rancher-ha.fullname" . }} 8443:443
+{{- end }}
+
+Logging in:
+
+  user      admin
+  password  the adminPassword value{{ if eq .Values.adminPassword "rancher-ha-changeme" }}, which is still the placeholder default - change it in Rancher after the first login{{ end }}
+
+It takes a couple of minutes before the first replica answers. Watch it with:
+
+  kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ include "rancher-ha.fullname" . }}
