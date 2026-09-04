@@ -1,0 +1,31 @@
+{{- $host := include "rancher-ha.host" . -}}
+# Where this Rancher is, written somewhere the deploying system can see.
+#
+# In virtual-cluster mode everything worth looking at - the Rancher Deployment, its Service, the
+# Ingress carrying the hostname - is created inside the virtual cluster by the setup hook, so
+# the release on this side owns nothing but vCluster's own machinery. A Fleet bundle, an argocd
+# app or `helm get manifest` therefore lists a page of vc-* objects and never says where the
+# thing actually is.
+#
+# This is the answer to that, and it is deliberately a plain ConfigMap in the release: it shows
+# up in those listings under a name that means something, and `kubectl get cm -A | grep access`
+# finds every Rancher on the cluster at once.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "rancher-ha.fullname" . }}-access
+  namespace: {{ .Release.Namespace }}
+  labels:
+{{ include "rancher-ha.labels" . | indent 4 }}
+  annotations:
+    rancher-ha.helm-dev/url: {{ printf "https://%s" $host | quote }}
+data:
+  url: {{ printf "https://%s" $host | quote }}
+  username: admin
+  # Not the password. It is a value of this release, and it is in the bootstrap Secret beside
+  # Rancher itself - inside the virtual cluster when there is one.
+  passwordFrom: {{ printf "secret/%s-bootstrap in namespace %s" (include "rancher-ha.fullname" .) (include "rancher-ha.targetNamespace" .) | quote }}
+  {{- if .Values.virtualCluster }}
+  virtualCluster: {{ include "rancher-ha.vclusterService" . | quote }}
+  note: "Rancher runs inside the virtual cluster named above; the Deployment and Ingress are not in this release."
+  {{- end }}

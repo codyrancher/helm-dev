@@ -60,6 +60,25 @@ opens on an ordinary login page.
 That includes recording acceptance of the Rancher EULA on your behalf. `skipFirstRun=false`
 leaves all three unset and you are asked in the browser instead.
 
+## Finding a running one
+
+Everything worth looking at lives inside the virtual cluster, so whatever deployed this release
+- Fleet, argocd, `helm get manifest` - sees only vCluster's own objects and never says where
+the Rancher is. The release carries a ConfigMap to answer that:
+
+```console
+kubectl get cm -A -l app.kubernetes.io/name=rancher-ha -o custom-columns=\
+NS:.metadata.namespace,URL:.data.url,USER:.data.username
+```
+
+One line per Rancher on the cluster. The same information is on the Ingress inside the virtual
+cluster, and on its synced copy in the release namespace, if you would rather look there.
+
+**A caveat about readiness.** A deploying system watches the resources in the release, and they
+are all vCluster's. It will report the release healthy as soon as the virtual cluster is up,
+which is a few minutes before Rancher answers. Do not read "Active" as "Rancher is ready" -
+check the URL.
+
 ## Values
 
 | Key | Default | What it is |
