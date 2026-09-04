@@ -1,5 +1,6 @@
-# What Rancher's install form asks. Two questions, both with the value already filled in, so
-# Next-Next-Install produces a working Rancher and answering nothing is a valid answer.
+# What Rancher's install form asks. The first two have their values already filled in; the
+# third has to be answered, because several Ranchers on one cluster are told apart by hostname
+# and nothing else.
 questions:
   - variable: adminPassword
     label: Admin password
@@ -15,3 +16,15 @@ questions:
     required: true
     default: rancher/rancher:v2.15.1
     group: Rancher
+  - variable: ingress.host
+    label: Hostname
+    description: The address this Rancher answers on. Each install needs its own - the ingress controller tells them apart by hostname alone. With no DNS to hand, a wildcard service works - <anything>.<node ip with dashes>.sslip.io resolves to that node.
+    type: hostname
+    required: true
+    group: Rancher
+  - variable: virtualCluster
+    label: Give it a virtual cluster of its own
+    description: On by default, and what lets several Ranchers share one real cluster - each gets its own API server, so each gets its own copy of the cluster-scoped things Rancher insists on owning. Turn it off to install Rancher straight into this cluster, which then has to be cattle-system and can hold only one.
+    type: boolean
+    default: true
+    group: Advanced

@@ -4,32 +4,69 @@ adminPassword: rancher-ha-changeme
 image: rancher/rancher:v2.15.1
 
 # Three replicas on three nodes is what this chart is for. Lowering it does not make the chart
-# install on a smaller cluster: the node check and the anti-affinity below are both keyed to
-# needing one node per replica, which is the point.
+# install on a smaller cluster: the node check and the anti-affinity are both keyed to needing
+# one node per replica, which is the point.
 replicas: 3
 
-# Whether this Rancher adopts the cluster it runs on as its `local` cluster.
+# Whether Rancher adopts the cluster it runs on as its `local` cluster.
 #
-# Kept at true because it is not really optional: the flag has been deprecated since Rancher
-# 2.5 and the server refuses to start with it off. It is here to be read rather than changed -
-# it is the reason this chart wants a cluster of its own. Installed onto a cluster that another
-# Rancher already manages, the two reconcile one cattle-system, and fleet-agent in particular
-# has exactly one owner: the second Rancher takes it over and the first loses the cluster.
+# Kept at true because it is not really optional: the flag has been deprecated since Rancher 2.5
+# and the server refuses to start with it off. In virtual-cluster mode the cluster it adopts is
+# the virtual one, which is exactly what makes several Ranchers able to share real machines.
 addLocal: true
 
-# The check that refuses a cluster too small to spread three replicas over. Both halves can be
+# Give each Rancher a virtual cluster of its own.
+#
+# This is what lets more than one live on a single real cluster, and it is on by default because
+# without it the answer is one Rancher per cluster and no arguing. Everything Rancher needs to
+# own outright - the cattle-controllers lease in kube-system, the v1.ext.cattle.io APIService,
+# the whole management.cattle.io CRD set and the data in it - is cluster-scoped, so two Ranchers
+# in one real cluster fight over all of it. A virtual cluster gives each its own API server, so
+# each gets its own copy of every one of those.
+#
+# Turn it off to install Rancher straight into the cluster, the ordinary way; then the release
+# has to be in cattle-system and there can only be one.
+#
+# Everything nested below is the upstream vCluster chart's own configuration, passed through.
+virtualCluster: true
+
+# Passed through to the upstream vCluster chart untouched. Its schema rejects anything it does
+# not recognise, which is why the switch above is not in here.
+vcluster:
+  sync:
+    toHost:
+      # The Ingress is created inside the virtual cluster and has to reach the real ingress
+      # controller, which is out here.
+      ingresses:
+        enabled: true
+    fromHost:
+      # Without this the virtual cluster invents fake nodes, and both the node check and the
+      # anti-affinity - the two things that make this HA - would be measuring a fiction.
+      nodes:
+        enabled: true
+        selector:
+          all: true
+
+# The check that refuses a cluster too small to spread the replicas over. Both halves can be
 # turned off together for a deliberate single-node trial; nothing else in the chart changes.
 nodeCheck:
   enabled: true
   minNodes: 3
 
+# Checks that only apply in virtual-cluster mode. See rancher-ha.checkVcluster.
+vclusterCheck:
+  storageClass: true
+
 ingress:
   enabled: true
   className: nginx
-  # Left empty on purpose: an ingress rule with no host matches every request that reaches the
-  # controller, so the public IP of any node is a working address with no DNS to arrange. Set
-  # it to a real name and the rule is bound to that name instead.
+  # The hostname this release answers on. Required in virtual-cluster mode, because the ingress
+  # controller tells several Ranchers apart by Host and nothing else.
   host: ""
+  # Or leave host empty and set this, and each release answers on <release>.<baseDomain>. With
+  # no DNS to hand, a wildcard service like sslip.io works: 52-41-16-180.sslip.io resolves
+  # anything.something.52-41-16-180.sslip.io to 52.41.16.180.
+  baseDomain: ""
   annotations: {}
 
 service:

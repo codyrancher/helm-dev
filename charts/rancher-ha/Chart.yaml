@@ -1,8 +1,8 @@
 apiVersion: v2
 name: rancher-ha
-description: A Rancher server in threes - three replicas, one per node, reachable on any node public IP.
+description: A Rancher server in threes - three replicas, one per node - in a virtual cluster of its own, so several can share one real cluster.
 type: application
-version: 0.1.0
+version: 0.2.0
 appVersion: v2.15.1
 keywords:
   - rancher
@@ -14,5 +14,12 @@ icon: https://raw.githubusercontent.com/codyrancher/helm-dev/main/charts/rancher
 annotations:
   catalog.cattle.io/display-name: Rancher HA
   catalog.cattle.io/release-name: rancher-ha
-  catalog.cattle.io/namespace: cattle-system
+  catalog.cattle.io/namespace: rancher-ha
   catalog.cattle.io/kube-version: ">=1.26.0-0"
+dependencies:
+  # The virtual cluster each Rancher gets. Vendored into the packaged chart, so installing it
+  # needs nothing from charts.loft.sh at install time.
+  - name: vcluster
+    version: 0.36.1
+    repository: https://charts.loft.sh
+    condition: virtualCluster

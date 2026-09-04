@@ -1,0 +1,6 @@
+{{- include "rancher-ha.checkNamespace" . -}}
+{{- include "rancher-ha.checkNodes" . -}}
+{{- include "rancher-ha.checkVcluster" . -}}
+{{- if not .Values.virtualCluster }}
+{{ include "rancher-ha.manifests" . }}
+{{- end }}

@@ -1,0 +1,139 @@
+{{- if .Values.virtualCluster }}
+{{- $ns := .Release.Namespace -}}
+{{- $name := include "rancher-ha.fullname" . -}}
+# Getting Rancher inside the virtual cluster.
+#
+# Helm installs into one cluster, and the virtual cluster does not exist until this release
+# creates it - so the manifests cannot simply be part of the release. They are carried in a
+# ConfigMap and applied by a hook that waits for the virtual cluster to answer.
+#
+# The obvious alternative, vCluster's own experimental.deploy.vcluster.helm, cannot be used
+# here: it is a subchart value, and Helm does not template subchart values, so the password,
+# image and hostname somebody just typed could never reach it.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ $name }}-manifests
+  namespace: {{ $ns }}
+  labels:
+{{ include "rancher-ha.labels" . | indent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation
+data:
+  rancher.yaml: |
+{{ include "rancher-ha.manifests" . | indent 4 }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $name }}-bootstrap
+  namespace: {{ $ns }}
+  labels:
+{{ include "rancher-ha.labels" . | indent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation
+---
+# One secret, in one namespace: the virtual cluster's kubeconfig. Nothing else is needed,
+# because everything this Job goes on to create it creates on the other side of that.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $name }}-bootstrap
+  namespace: {{ $ns }}
+  labels:
+{{ include "rancher-ha.labels" . | indent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation
+rules:
+  - apiGroups: [""]
+    resources: [secrets]
+    resourceNames: [{{ include "rancher-ha.vclusterSecret" . }}]
+    verbs: [get]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $name }}-bootstrap
+  namespace: {{ $ns }}
+  labels:
+{{ include "rancher-ha.labels" . | indent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation
+subjects:
+  - kind: ServiceAccount
+    name: {{ $name }}-bootstrap
+    namespace: {{ $ns }}
+roleRef:
+  kind: Role
+  name: {{ $name }}-bootstrap
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $name }}-bootstrap
+  namespace: {{ $ns }}
+  labels:
+{{ include "rancher-ha.labels" . | indent 4 }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": before-hook-creation
+spec:
+  backoffLimit: 4
+  template:
+    metadata:
+      labels:
+        app: {{ $name }}-bootstrap
+    spec:
+      serviceAccountName: {{ $name }}-bootstrap
+      restartPolicy: Never
+      volumes:
+        - name: manifests
+          configMap:
+            name: {{ $name }}-manifests
+      containers:
+        - name: bootstrap
+          # The Rancher image again: it carries kubectl, and it is the image being pulled onto
+          # these nodes anyway, so the bootstrap costs no second pull.
+          image: {{ .Values.image | quote }}
+          volumeMounts:
+            - name: manifests
+              mountPath: /manifests
+          command: [/bin/sh, -c]
+          args:
+            - |
+              set -e
+              echo "waiting for the virtual cluster's kubeconfig"
+              i=0
+              until kubectl -n {{ $ns }} get secret {{ include "rancher-ha.vclusterSecret" . }} >/dev/null 2>&1; do
+                i=$((i+1)); [ "$i" -gt 120 ] && { echo "the virtual cluster never published a kubeconfig"; exit 1; }
+                sleep 5
+              done
+
+              # The kubeconfig it publishes is written for a port-forward, so the server in it
+              # is localhost. From in here the virtual cluster is an ordinary Service.
+              kubectl -n {{ $ns }} get secret {{ include "rancher-ha.vclusterSecret" . }} \
+                -o jsonpath='{.data.config}' | base64 -d \
+                | sed 's|https://localhost:8443|https://{{ include "rancher-ha.vclusterService" . }}.{{ $ns }}.svc:443|' > /tmp/vc.kubeconfig
+              export KUBECONFIG=/tmp/vc.kubeconfig
+
+              echo "waiting for the virtual cluster to answer"
+              i=0
+              until kubectl get namespace >/dev/null 2>&1; do
+                i=$((i+1)); [ "$i" -gt 120 ] && { echo "the virtual cluster never became reachable"; exit 1; }
+                sleep 5
+              done
+
+              kubectl create namespace {{ include "rancher-ha.targetNamespace" . }} --dry-run=client -o yaml | kubectl apply -f -
+              kubectl apply -f /manifests/rancher.yaml
+              echo "Rancher applied inside the virtual cluster; it takes a few minutes to answer"
+{{- end }}

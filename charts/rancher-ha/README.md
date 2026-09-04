@@ -1,72 +1,85 @@
 # rancher-ha
 
-A Rancher server in threes: three replicas, one per node, behind the cluster's own ingress
-controller, reachable on the public address of any node.
+A Rancher server in threes - three replicas, one per node - in a virtual cluster of its own, so
+several of them can share one real cluster. A second Rancher is a second release name.
 
 ```console
 helm repo add helm-dev https://codyrancher.github.io/helm-dev
-helm install rancher-ha helm-dev/rancher-ha \
-  --namespace cattle-system --create-namespace \
+
+helm install rancher-a helm-dev/rancher-ha -n rancher-a --create-namespace \
+  --set ingress.baseDomain=<your base domain> \
   --set adminPassword=<at least 12 characters>
+
+helm install rancher-b helm-dev/rancher-ha -n rancher-b --create-namespace \
+  --set ingress.baseDomain=<your base domain>
 ```
 
-Then open `https://<any node address>/` and log in as `admin`.
+They come up on `https://rancher-a.<baseDomain>/` and `https://rancher-b.<baseDomain>/`, each
+its own Rancher with its own admin, its own clusters and its own everything. Log in as `admin`.
 
-## It has to be cattle-system
+## Why a virtual cluster
 
-Not a convention - the chart refuses any other namespace. On startup Rancher registers the
-aggregated API `v1.ext.cattle.io` against a Service it creates itself, always at
-`cattle-system/imperative-api-extension`, selecting its own pods by label. A Service only
-selects pods in its own namespace, so a release anywhere else leaves that Service with no
-endpoints and every page of the UI replaced by the one line `API Aggregation not ready`.
-Nothing in that failure points at the namespace, so the chart fails at template time instead.
+Because two Rancher servers cannot share a real one. Everything Rancher insists on owning is
+cluster-scoped and fixed-name:
 
-## It needs three nodes
+| Thing | Why there can only be one |
+| --- | --- |
+| `kube-system/cattle-controllers` lease | One holder. A second Rancher waits on "Waiting for initial data to be populated" until it gets it. |
+| `cattle-system/imperative-api-extension` Service | Fixed name, and its selector points at one release's pods. |
+| `v1.ext.cattle.io` APIService | Cluster-scoped, one per cluster. |
+| `management.cattle.io` CRDs and their contents | Two servers on the same CRDs are two servers on one database. |
 
-Not as a recommendation - the chart refuses a smaller cluster, in two places:
+A virtual cluster gives each Rancher its own API server, so each gets its own copy of all four.
+The pods still run on the real nodes - vCluster schedules them out to the host - so three
+replicas still means three machines, and the anti-affinity still means one per machine.
 
-- a template-time check that fails the install with a sentence, whenever Helm can reach the
-  API to count nodes;
-- `requiredDuringSchedulingIgnoredDuringExecution` pod anti-affinity on
-  `kubernetes.io/hostname`, so the three replicas cannot share a machine even if the check is
-  turned off.
+Turn it off with `--set virtualCluster=false` to install Rancher straight into the cluster, the
+ordinary way. Then the release has to be in `cattle-system` (the chart will tell you why) and
+there can be only one.
 
-Three is the number that makes losing one node survivable. `nodeCheck.enabled=false` disables
-the check for a deliberate single-node trial; the anti-affinity still applies, so the extra
-replicas stay Pending, which is the honest outcome.
+## What it needs from the cluster
+
+- **Three nodes.** Refused otherwise, in two places: a template-time node count that fails the
+  install with a sentence, and `requiredDuringScheduling` pod anti-affinity on
+  `kubernetes.io/hostname` so the replicas cannot share a machine even if the check is off.
+- **An ingress controller**, and a hostname per release. The controller tells several Ranchers
+  apart by `Host` and nothing else, so `ingress.host` or `ingress.baseDomain` is required in
+  virtual-cluster mode. With no DNS to hand, a wildcard service does: with
+  `ingress.baseDomain=203-0-113-10.sslip.io`, `rancher-a.203-0-113-10.sslip.io` resolves to
+  `203.0.113.10` with nothing to set up.
+- **A default StorageClass**, for the virtual cluster's control-plane volume. RKE2 and K3s ship
+  none; `rancher/local-path-provisioner` is the usual answer. Checked at template time.
 
 ## Values
 
 | Key | Default | What it is |
 | --- | --- | --- |
 | `adminPassword` | `rancher-ha-changeme` | The first admin password. A placeholder that says so - change it. |
-| `image` | `rancher/rancher:v2.15.1` | The Rancher server image. |
+| `image` | `rancher/rancher:v2.15.1` | The Rancher server image. Also the image the two hook Jobs use, since it carries kubectl. |
+| `ingress.host` | `""` | The hostname this release answers on. |
+| `ingress.baseDomain` | `""` | Or set this, and the host becomes `<release>.<baseDomain>`. |
+| `virtualCluster` | `true` | Give this Rancher a virtual cluster of its own. |
 | `replicas` | `3` | One per node. |
-| `addLocal` | `false` | Whether this Rancher adopts the cluster it runs on. See below. |
+| `addLocal` | `true` | Not really optional - Rancher refuses to start with it off. |
 | `nodeCheck.enabled` | `true` | The three-node check. |
 | `nodeCheck.minNodes` | `3` | How many nodes it insists on. |
+| `vclusterCheck.storageClass` | `true` | The default-StorageClass check. |
 | `ingress.enabled` | `true` | Create the Ingress. |
 | `ingress.className` | `nginx` | Ingress class. |
-| `ingress.host` | `""` | Empty means the rule matches any host, so any node address works. |
-| `service.type` | `ClusterIP` | Service type. |
-| `resources` | `{}` | Container resources. |
+| `vcluster.*` | see values.yaml | Passed through to the upstream vCluster chart. |
 
-## Give it a cluster of its own
+## How the install works
 
-Rancher adopts the cluster it runs on as its `local` cluster, and there is no way round it:
-`addLocal` has been deprecated since Rancher 2.5 and the server refuses to start with it off.
-So the new Rancher installs its own webhook, Fleet and provisioning controllers into
-`cattle-system` and `cattle-fleet-system`.
-
-Install this onto a cluster that another Rancher already manages and the two of them reconcile
-the same namespaces. `fleet-agent` is the sharp edge: it has exactly one owner, the new Rancher
-takes it over, and the managing Rancher loses the cluster. Nothing is lost that cannot be
-rebuilt, but it is not a state to be surprised by.
+Helm installs into one cluster, and the virtual cluster does not exist until this release
+creates it - so Rancher's manifests cannot simply be part of the release. They are rendered
+into a ConfigMap and applied by a `post-install` hook that waits for the virtual cluster to
+answer. vCluster's own `experimental.deploy.vcluster.helm` would be the obvious route and does
+not work here: it is a subchart value, and Helm does not template subchart values, so the
+password, image and hostname somebody just typed could never reach it.
 
 ## TLS
 
 The ingress controller answers 443 with its own self-signed certificate, so the browser warns
-once. That is deliberate: it needs no cert-manager and no DNS, and it is still TLS, which
-matters because Rancher sets secure cookies and a login over plain HTTP does not stick. For a
-real certificate, set `ingress.host` and add your issuer's annotations through
-`ingress.annotations`.
+once. That needs no cert-manager and no real certificate, and it is still TLS, which matters
+because Rancher sets secure cookies and a login over plain HTTP does not stick. For a real
+certificate, add your issuer's annotations through `ingress.annotations`.

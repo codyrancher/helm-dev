@@ -1,29 +1,35 @@
 {{ .Chart.Name }} {{ .Chart.Version }} - Rancher {{ .Chart.AppVersion }}, {{ .Values.replicas }} replicas, one per node.
+{{- if .Values.virtualCluster }}
+Running in a virtual cluster of its own, so this is not the only Rancher these machines can hold.
+{{- end }}
 
 Reaching it:
 
-{{- if .Values.ingress.enabled }}
-{{- if .Values.ingress.host }}
-  https://{{ .Values.ingress.host }}
-{{- else }}
-  The ingress rule has no host, so any node address answers. Pick one:
+  https://{{ include "rancher-ha.host" . }}
 
-    kubectl get nodes -o wide
-
-  and open https://<that address>/ . The certificate is the ingress controller's own, so the
-  browser warns once.
-{{- end }}
-{{- else }}
-  No ingress was created (ingress.enabled=false). Reach the service directly:
-
-    kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "rancher-ha.fullname" . }} 8443:443
-{{- end }}
+  The certificate is the ingress controller's own, so the browser warns once.
 
 Logging in:
 
   user      admin
   password  the adminPassword value{{ if eq .Values.adminPassword "rancher-ha-changeme" }}, which is still the placeholder default - change it in Rancher after the first login{{ end }}
 
+{{ if .Values.virtualCluster -}}
+It takes a few minutes: the virtual cluster comes up, a hook applies Rancher inside it, and
+Rancher then starts. Watch it from out here with:
+
+  kubectl -n {{ .Release.Namespace }} logs job/{{ include "rancher-ha.fullname" . }}-bootstrap
+  kubectl -n {{ .Release.Namespace }} get pods
+
+The Rancher pods appear in this namespace with names ending -x-cattle-system-x-{{ .Release.Name }};
+that is vCluster syncing them out of the virtual cluster onto these nodes.
+
+To get a kubeconfig for the virtual cluster itself:
+
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "rancher-ha.vclusterService" . }} 8443:443 &
+  kubectl -n {{ .Release.Namespace }} get secret {{ include "rancher-ha.vclusterSecret" . }} -o jsonpath='{.data.config}' | base64 -d > vc.kubeconfig
+{{- else }}
 It takes a couple of minutes before the first replica answers. Watch it with:
 
   kubectl -n {{ .Release.Namespace }} rollout status deploy/{{ include "rancher-ha.fullname" . }}
+{{- end }}
