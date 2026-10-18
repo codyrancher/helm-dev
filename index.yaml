@@ -2,8 +2,18 @@ apiVersion: v1
 entries:
   hello-config:
   - apiVersion: v2
+    appVersion: 1.1.0
+    created: "2026-10-18T05:47:28.348550881Z"
+    description: Simple ConfigMap Helm chart for Apps Plus validation
+    digest: 8f6d793100353a4fd9b4af01f1edd74e5a8e57d446f160c63c7c51ea5b1e19e6
+    name: hello-config
+    type: application
+    urls:
+    - https://codyrancher.github.io/helm-dev/hello-config-0.2.0.tgz
+    version: 0.2.0
+  - apiVersion: v2
     appVersion: 1.0.0
-    created: "2026-10-17T21:44:32.102733746-07:00"
+    created: "2026-10-18T05:47:28.348371948Z"
     description: Simple ConfigMap chart for Apps Plus validation
     digest: dd136cad9048a7b444e20f7e29eb03600f42bb14a8a6a69ccdc9b88a46897fb6
     name: hello-config
@@ -12,9 +22,21 @@ entries:
     - https://codyrancher.github.io/helm-dev/hello-config-0.1.0.tgz
     version: 0.1.0
   hello-redis:
+  - annotations:
+      appsplus.io/dependencies: hello-config
+    apiVersion: v2
+    appVersion: 7.2.0
+    created: "2026-10-18T05:47:28.348854063Z"
+    description: Lightweight backing store chart with 1 implicit dependency on hello-config
+    digest: 7ce7d8f249723aca89193c9d95d11b2dbdac9b9088560ea86c07171d936a6f28
+    name: hello-redis
+    type: application
+    urls:
+    - https://codyrancher.github.io/helm-dev/hello-redis-0.2.0.tgz
+    version: 0.2.0
   - apiVersion: v2
     appVersion: "7.2"
-    created: "2026-10-17T21:44:32.102942712-07:00"
+    created: "2026-10-18T05:47:28.348720456Z"
     description: Lightweight backing store chart for Apps Plus dependency validation
     digest: 99d2b6baa0397dd2dc30b37d512f922811333a63784aa8515eaca8afbb619951
     name: hello-redis
@@ -24,10 +46,23 @@ entries:
     version: 0.1.0
   hello-webapp:
   - annotations:
+      appsplus.io/dependencies: hello-redis,hello-config
+    apiVersion: v2
+    appVersion: 1.1.0
+    created: "2026-10-18T05:47:28.349173658Z"
+    description: Web application chart with 2 implicit dependencies (hello-redis,
+      hello-config)
+    digest: af94ee22bb94107804989de6af7ba77030242a01a27ab4e4a9413062dba6c3bd
+    name: hello-webapp
+    type: application
+    urls:
+    - https://codyrancher.github.io/helm-dev/hello-webapp-0.2.0.tgz
+    version: 0.2.0
+  - annotations:
       appsplus.io/dependencies: hello-redis
     apiVersion: v2
     appVersion: 1.0.0
-    created: "2026-10-17T21:44:32.103148326-07:00"
+    created: "2026-10-18T05:47:28.348998146Z"
     description: Web application chart with an implicit dependency on hello-redis
     digest: c650e23c047569c2b7c52dee894a029f5efa04c406b21516b52050322d1a8803
     name: hello-webapp
@@ -43,7 +78,7 @@ entries:
       catalog.cattle.io/release-name: rancher-ha
     apiVersion: v2
     appVersion: v2.15.1
-    created: "2026-10-17T21:44:32.135701413-07:00"
+    created: "2026-10-18T05:47:28.383500867Z"
     dependencies:
     - condition: virtualCluster
       name: vcluster
@@ -71,7 +106,7 @@ entries:
       catalog.cattle.io/release-name: rancher-ha
     apiVersion: v2
     appVersion: v2.15.1
-    created: "2026-10-17T21:44:32.129093828-07:00"
+    created: "2026-10-18T05:47:28.378072651Z"
     dependencies:
     - condition: virtualCluster
       name: vcluster
@@ -99,7 +134,7 @@ entries:
       catalog.cattle.io/release-name: rancher-ha
     apiVersion: v2
     appVersion: v2.15.1
-    created: "2026-10-17T21:44:32.121767012-07:00"
+    created: "2026-10-18T05:47:28.371935892Z"
     dependencies:
     - condition: virtualCluster
       name: vcluster
@@ -127,7 +162,7 @@ entries:
       catalog.cattle.io/release-name: rancher-ha
     apiVersion: v2
     appVersion: v2.15.1
-    created: "2026-10-17T21:44:32.11713043-07:00"
+    created: "2026-10-18T05:47:28.367438243Z"
     dependencies:
     - condition: virtualCluster
       name: vcluster
@@ -155,7 +190,7 @@ entries:
       catalog.cattle.io/release-name: rancher-ha
     apiVersion: v2
     appVersion: v2.15.1
-    created: "2026-10-17T21:44:32.109974237-07:00"
+    created: "2026-10-18T05:47:28.361233669Z"
     dependencies:
     - condition: virtualCluster
       name: vcluster
@@ -183,7 +218,7 @@ entries:
       catalog.cattle.io/release-name: rancher-ha
     apiVersion: v2
     appVersion: v2.15.1
-    created: "2026-10-17T21:44:32.103796528-07:00"
+    created: "2026-10-18T05:47:28.352010757Z"
     description: A Rancher server in threes - three replicas, one per node, reachable
       on any node public IP.
     digest: 11e77ed33df4fabe4d957616f71346d4125f006ca33bca656016239b3907bc4e
@@ -199,4 +234,4 @@ entries:
     urls:
     - https://codyrancher.github.io/helm-dev/rancher-ha-0.1.0.tgz
     version: 0.1.0
-generated: "2026-10-17T21:44:32.102374969-07:00"
+generated: "2026-10-18T05:47:28.348085248Z"
