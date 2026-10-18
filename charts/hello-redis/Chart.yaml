@@ -1,0 +1,6 @@
+apiVersion: v2
+name: hello-redis
+description: Lightweight backing store chart for Apps Plus dependency validation
+type: application
+version: 0.1.0
+appVersion: "7.2"

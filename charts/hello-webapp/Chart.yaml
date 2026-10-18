@@ -1,0 +1,8 @@
+apiVersion: v2
+name: hello-webapp
+description: Web application chart with an implicit dependency on hello-redis
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+annotations:
+  appsplus.io/dependencies: hello-redis
