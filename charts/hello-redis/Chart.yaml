@@ -1,6 +1,8 @@
 apiVersion: v2
 name: hello-redis
-description: Lightweight backing store chart for Apps Plus dependency validation
+description: Lightweight backing store chart with 1 implicit dependency on hello-config
 type: application
-version: 0.1.0
-appVersion: "7.2"
+version: 0.2.0
+appVersion: "7.2.0"
+annotations:
+  appsplus.io/dependencies: "hello-config"
